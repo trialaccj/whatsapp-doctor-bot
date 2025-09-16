@@ -17,6 +17,7 @@ app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
+  console.log("[GET /webhook]", { mode, tokenPresent: Boolean(token), hasChallenge: Boolean(challenge) });
   if (mode && token && mode === "subscribe" && token === VERIFY_TOKEN) {
     res.status(200).send(challenge);
   } else {
@@ -182,12 +183,30 @@ function buildMenuGreeting(name) {
   );
 }
 
+function getIncomingText(message) {
+  // Text messages
+  const text = message?.text?.body;
+  if (typeof text === "string" && text.length > 0) return text;
+  // Interactive replies (list or button)
+  if (message?.type === "interactive" && message.interactive) {
+    const i = message.interactive;
+    if (i.list_reply?.title) return i.list_reply.title;
+    if (i.button_reply?.title) return i.button_reply.title;
+  }
+  // Button messages sometimes come as button with payload/title
+  if (message?.button?.text) return message.button.text;
+  return "";
+}
+
 // Step 2: Receive and Respond
 app.post("/webhook", async (req, res) => {
-  const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+  const rawEntry = req.body.entry?.[0];
+  const message = rawEntry?.changes?.[0]?.value?.messages?.[0];
+  console.log("[POST /webhook] incoming:", JSON.stringify(req.body));
   if (message) {
     const from = message.from;
-    const text = message.text?.body?.toLowerCase?.() || "";
+    const incoming = getIncomingText(message);
+    const text = incoming?.toLowerCase?.() || "";
 
     let reply;
 
