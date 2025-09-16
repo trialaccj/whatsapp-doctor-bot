@@ -1,0 +1,17 @@
+{
+  "name": "whatsapp-doctor-bot",
+  "version": "1.0.0",
+  "description": "Simple WhatsApp doctor bot backend using Express",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.7",
+    "body-parser": "^1.20.3",
+    "dotenv": "^17.2.2",
+    "express": "^4.21.1"
+  }
+}
