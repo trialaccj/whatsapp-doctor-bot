@@ -1,6 +1,5 @@
 import express from "express";
 import bodyParser from "body-parser";
-import axios from "axios";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -158,15 +157,24 @@ app.post("/webhook", async (req, res) => {
     if (!ACCESS_TOKEN || !PHONE_NUMBER_ID) {
       console.error("Missing ACCESS_TOKEN or PHONE_NUMBER_ID");
     } else {
-      await axios.post(
-        `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`,
-        {
-          messaging_product: "whatsapp",
-          to: from,
-          text: { body: reply },
+      const url = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
+      const payload = {
+        messaging_product: "whatsapp",
+        to: from,
+        text: { body: reply },
+      };
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
         },
-        { headers: { Authorization: `Bearer ${ACCESS_TOKEN}` } }
-      );
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        console.error("Send error:", data);
+      }
     }
 
     res.sendStatus(200);
