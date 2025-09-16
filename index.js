@@ -1,22 +1,22 @@
 import express from "express";
 import bodyParser from "body-parser";
-import axios from "axios";
 import dotenv from "dotenv";
+import fetch from "node-fetch";
 
 dotenv.config();
 
 const app = express();
 app.use(bodyParser.json());
 
-// ENV
+// Env vars
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "";
 const ACCESS_TOKEN = process.env.ACCESS_TOKEN || "";
-const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || ""; // required to send replies
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || ""; // required to send messages
 
-// Health check (Render)
+// Health check
 app.get("/", (_req, res) => res.status(200).send("OK"));
 
-// Webhook Verification (GET)
+// Webhook verification (GET)
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -30,7 +30,7 @@ app.get("/webhook", (req, res) => {
   return res.sendStatus(403);
 });
 
-// Helper: extract user-visible text from a message (supports text and interactive replies)
+// Helper: extract readable text from incoming WhatsApp message
 function getIncomingText(message) {
   const t = message?.text?.body;
   if (typeof t === "string" && t.length > 0) return t;
@@ -45,7 +45,7 @@ function getIncomingText(message) {
   return "";
 }
 
-// Webhook Receiver (POST)
+// Webhook receiver (POST)
 app.post("/webhook", async (req, res) => {
   try {
     console.log("[POST /webhook] incoming:", JSON.stringify(req.body));
@@ -55,49 +55,67 @@ app.post("/webhook", async (req, res) => {
     const value = change?.value;
     const message = value?.messages?.[0];
 
-    if (!message) {
-      // WhatsApp sends many event types (statuses, template updates, etc.)
-      return res.sendStatus(200);
-    }
+    // Non-message events (statuses, etc.) should still return 200
+    if (!message) return res.sendStatus(200);
 
-    const from = message.from;
-    const text = getIncomingText(message) || "";
-    const lower = text.toLowerCase().trim();
+    const from = message.from; // E.164 without +
+    const text = getIncomingText(message).trim();
+    const lower = text.toLowerCase();
 
-    // Simple reply logic
-    let reply = "👋 Hello! Send 'menu' to see options or say anything to get an echo.";
+    let reply = "👋 Hello! Send 'menu' or say anything and I’ll echo it back.";
     if (lower === "menu") {
-      reply = "📋 Menu\n- Type anything and I’ll echo it back.\n- Say 'help' for info.";
+      reply = "📋 Menu\n- Say anything and I’ll echo it back.\n- Say 'help' for info.";
     } else if (lower === "help") {
-      reply = "ℹ️ This is a demo bot. Your messages are echoed back. You can integrate your own logic next.";
+      reply = "ℹ️ This is a demo WhatsApp bot using Cloud API on Render.";
     } else if (text) {
       reply = `You said: ${text}`;
     }
 
-    // Send reply via WhatsApp Cloud API
+    // Send the reply (only if envs are set)
     if (!ACCESS_TOKEN || !PHONE_NUMBER_ID) {
       console.error("Missing ACCESS_TOKEN or PHONE_NUMBER_ID");
     } else {
-      await axios.post(
-        `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`,
-        {
-          messaging_product: "whatsapp",
-          to: from,
-          text: { body: reply },
+      const url = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
+      const body = {
+        messaging_product: "whatsapp",
+        to: from,
+        text: { body: reply },
+      };
+
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
         },
-        { headers: { Authorization: `Bearer ${ACCESS_TOKEN}` } }
-      );
+        body: JSON.stringify(body),
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        const code = errData?.error?.code;
+        const subcode = errData?.error?.error_subcode;
+        console.error("Send error:", JSON.stringify(errData, null, 2));
+
+        // Friendly guidance for common issues
+        if (code === 131030 || subcode === 131030) {
+          console.error(
+            "Recipient not in allowed list (error 131030). Add your phone number in the Meta dashboard (WhatsApp → API Setup → Add recipients)."
+          );
+        } else if (code === 190) {
+          console.error("Invalid/expired ACCESS_TOKEN. Regenerate it and update Render env.");
+        }
+      }
     }
 
     res.sendStatus(200);
   } catch (err) {
     console.error("Error handling webhook:", err?.response?.data || err.message || err);
-    res.sendStatus(200); // always 200 to avoid webhook retries storm while you debug
+    // Always 200 to prevent repeated webhook retries while you debug
+    res.sendStatus(200);
   }
 });
 
-// Start server (Render provides PORT)
+// Start server (Render sets PORT)
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
