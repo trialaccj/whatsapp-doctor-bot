@@ -1,6 +1,5 @@
 import express from "express";
 import bodyParser from "body-parser";
-import fetch from "node-fetch";
 
 const app = express();
 app.use(bodyParser.json());
@@ -165,3 +164,4 @@ async function sendMessage(payload) {
 // ============================================================
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
