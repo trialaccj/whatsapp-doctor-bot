@@ -149,6 +149,57 @@ function buildAdviceParts(catId) {
   return { header, body };
 }
 
+// --- Low-level WhatsApp send helpers ---
+async function sendWhatsApp(payload) {
+  if (!ACCESS_TOKEN || !PHONE_NUMBER_ID) {
+    console.error("Missing ACCESS_TOKEN or PHONE_NUMBER_ID");
+    return;
+  }
+  const url = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${ACCESS_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}));
+    console.error("Send error:", data);
+  }
+}
+
+async function sendText(to, body) {
+  return sendWhatsApp({ messaging_product: "whatsapp", to, text: { body } });
+}
+
+async function sendButtons(to, headerText, bodyText, buttons) {
+  return sendWhatsApp({
+    messaging_product: "whatsapp",
+    to,
+    interactive: {
+      type: "button",
+      header: { type: "text", text: headerText },
+      body: { text: bodyText },
+      action: { buttons },
+    },
+  });
+}
+
+async function sendList(to, headerText, bodyText, buttonText, sections) {
+  return sendWhatsApp({
+    messaging_product: "whatsapp",
+    to,
+    interactive: {
+      type: "list",
+      header: { type: "text", text: headerText },
+      body: { text: bodyText },
+      action: { button: buttonText, sections },
+    },
+  });
+}
+
 // Webhook Receiver (POST)
 app.post("/webhook", async (req, res) => {
   try {
