@@ -265,6 +265,23 @@ app.post("/webhook", async (req, res) => {
         await sendList(from, "🏥 Hospital Services", "Here are our services. Please select one:", "View Services", sections);
         return res.sendStatus(200);
       }
+        // Handle selections from Hospital Services list
+        if (buttonId.startsWith("svc_")) {
+          const svc = {
+            svc_emergency: "🚨 Emergency Care — 24/7 emergency medical services.",
+            svc_cardiology: "❤ Cardiology — Heart and cardiovascular care.",
+            svc_pediatrics: "👶 Pediatrics — Medical care for children.",
+            svc_orthopedics: "🦴 Orthopedics — Bone and joint treatment.",
+            svc_dermatology: "🧴 Dermatology — Skin and hair care.",
+            svc_gynecology: "👩 Gynecology — Women's health services.",
+            svc_neurology: "🧠 Neurology — Brain and nervous system care.",
+            svc_oncology: "🎗 Oncology — Cancer treatment and care."
+          }[buttonId];
+          if (svc) {
+            await sendText(from, `🏥 Service Info\n${svc}\n\nSend 'menu' to go back.`);
+          }
+          return res.sendStatus(200);
+        }
       if (buttonId === "general_medication") {
         const sections = [{
           title: "Symptoms 1–9",
