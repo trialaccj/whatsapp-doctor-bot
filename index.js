@@ -278,10 +278,40 @@ app.post("/webhook", async (req, res) => {
             { id: "adv_7", title: "😷 Cough", description: "Tap to view advice" },
             { id: "adv_8", title: "🩸 Bleeding / Spotting P/V", description: "Tap to view advice" },
             { id: "adv_9", title: "🔙 Back pain / 🧠 Muscular pain", description: "Tap to view advice" },
+            { id: "adv_more1", title: "➡ More options… (10–13)", description: "Open remaining options" }
+          ]
+        }];
+        await sendList(from, "💊 General Medication", "Please choose a symptom:", "View Options", sections);
+        return res.sendStatus(200);
+      }
+      if (buttonId === "adv_more1") {
+        const sections = [{
+          title: "More Symptoms",
+          rows: [
             { id: "adv_10", title: "🚫 Constipation", description: "Tap to view advice" },
             { id: "adv_11", title: "🥴 Weakness / Dizziness", description: "Tap to view advice" },
             { id: "adv_12", title: "💊 Vaginal insertion (weekly)", description: "Tap to view advice" },
-            { id: "adv_13", title: "🤕 Stomach ache", description: "Tap to view advice" }
+            { id: "adv_13", title: "🤕 Stomach ache", description: "Tap to view advice" },
+            { id: "adv_med_back", title: "⬅ Back to first list", description: "Return to options 1–9" }
+          ]
+        }];
+        await sendList(from, "💊 General Medication", "Please choose a symptom:", "View Options", sections);
+        return res.sendStatus(200);
+      }
+      if (buttonId === "adv_med_back") {
+        const sections = [{
+          title: "Doctor’s Advice (Symptoms)",
+          rows: [
+            { id: "adv_1", title: "🤒 Fever / 🤕 Headache / 💪 Body or limb pain", description: "Tap to view advice" },
+            { id: "adv_2", title: "🚽 Diarrhoea", description: "Tap to view advice" },
+            { id: "adv_3", title: "🔥 Acidity / Heartburn / Gastritis", description: "Tap to view advice" },
+            { id: "adv_4", title: "🤧 Allergy / Body itching / Cold", description: "Tap to view advice" },
+            { id: "adv_5", title: "🤢 Vomiting / Nausea", description: "Tap to view advice" },
+            { id: "adv_6", title: "🤧🤧 Cold / Running nose", description: "Tap to view advice" },
+            { id: "adv_7", title: "😷 Cough", description: "Tap to view advice" },
+            { id: "adv_8", title: "🩸 Bleeding / Spotting P/V", description: "Tap to view advice" },
+            { id: "adv_9", title: "🔙 Back pain / 🧠 Muscular pain", description: "Tap to view advice" },
+            { id: "adv_more1", title: "➡ More options… (10–13)", description: "Open remaining options" }
           ]
         }];
         await sendList(from, "💊 General Medication", "Please choose a symptom:", "View Options", sections);
