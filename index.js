@@ -266,7 +266,35 @@ app.post("/webhook", async (req, res) => {
         return res.sendStatus(200);
       }
       if (buttonId === "general_medication") {
-        await sendText(from, `💊 General Medication\nPlease choose 1–13 from the list:\n\n${MENU}\n\nSend 'menu' to go back.`);
+        const sections = [{
+          title: "Doctor’s Advice (Symptoms)",
+          rows: [
+            { id: "adv_1", title: "🤒 Fever / 🤕 Headache / 💪 Body or limb pain", description: "Tap to view advice" },
+            { id: "adv_2", title: "🚽 Diarrhoea", description: "Tap to view advice" },
+            { id: "adv_3", title: "🔥 Acidity / Heartburn / Gastritis", description: "Tap to view advice" },
+            { id: "adv_4", title: "🤧 Allergy / Body itching / Cold", description: "Tap to view advice" },
+            { id: "adv_5", title: "🤢 Vomiting / Nausea", description: "Tap to view advice" },
+            { id: "adv_6", title: "🤧🤧 Cold / Running nose", description: "Tap to view advice" },
+            { id: "adv_7", title: "😷 Cough", description: "Tap to view advice" },
+            { id: "adv_8", title: "🩸 Bleeding / Spotting P/V", description: "Tap to view advice" },
+            { id: "adv_9", title: "🔙 Back pain / 🧠 Muscular pain", description: "Tap to view advice" },
+            { id: "adv_10", title: "🚫 Constipation", description: "Tap to view advice" },
+            { id: "adv_11", title: "🥴 Weakness / Dizziness", description: "Tap to view advice" },
+            { id: "adv_12", title: "💊 Vaginal insertion (weekly)", description: "Tap to view advice" },
+            { id: "adv_13", title: "🤕 Stomach ache", description: "Tap to view advice" }
+          ]
+        }];
+        await sendList(from, "💊 General Medication", "Please choose a symptom:", "View Options", sections);
+        return res.sendStatus(200);
+      }
+      if (buttonId?.startsWith("adv_")) {
+        const id = parseInt(buttonId.split("_")[1], 10);
+        const parts = buildAdviceParts(id);
+        if (parts) {
+          await sendText(from, `${parts.header}\n${parts.body}\n\nSend 'menu' to go back.`);
+        } else {
+          await sendText(from, "Sorry, I couldn't find that option. Please choose 1–13.");
+        }
         return res.sendStatus(200);
       }
     }
