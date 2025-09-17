@@ -281,7 +281,7 @@ app.post("/webhook", async (req, res) => {
             { id: "adv_more1", title: "➡ More options… (10–13)", description: "Open remaining options" }
           ]
         }];
-        await sendList(from, "💊 General Medication", "Please choose a symptom:", "View Options", sections);
+        await sendList(from, "💊 General Medication", "Please choose a symptom:", "View Services", sections);
         return res.sendStatus(200);
       }
       if (buttonId === "adv_more1") {
@@ -295,7 +295,7 @@ app.post("/webhook", async (req, res) => {
             { id: "adv_med_back", title: "⬅ Back to first list", description: "Return to options 1–9" }
           ]
         }];
-        await sendList(from, "💊 General Medication", "Please choose a symptom:", "View Options", sections);
+        await sendList(from, "💊 General Medication", "Please choose a symptom:", "View Services", sections);
         return res.sendStatus(200);
       }
       if (buttonId === "adv_med_back") {
@@ -314,7 +314,7 @@ app.post("/webhook", async (req, res) => {
             { id: "adv_more1", title: "➡ More options… (10–13)", description: "Open remaining options" }
           ]
         }];
-        await sendList(from, "💊 General Medication", "Please choose a symptom:", "View Options", sections);
+        await sendList(from, "💊 General Medication", "Please choose a symptom:", "View Services", sections);
         return res.sendStatus(200);
       }
       if (buttonId?.startsWith("adv_")) {
