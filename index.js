@@ -7,19 +7,21 @@ dotenv.config();
 const app = express();
 app.use(bodyParser.json());
 
-// ENV (placeholders fall back to empty strings if not provided)
+// ENV
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "";
 const ACCESS_TOKEN = process.env.ACCESS_TOKEN || "";
-const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || "";
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || ""; // required to send replies
 
 // Health check (Render)
 app.get("/", (_req, res) => res.status(200).send("OK"));
 
-// Webhook verification (GET)
+// Webhook Verification (GET)
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
+
+  console.log("[GET /webhook]", { mode, tokenPresent: Boolean(token), hasChallenge: Boolean(challenge) });
 
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
     return res.status(200).send(challenge);
@@ -27,7 +29,7 @@ app.get("/webhook", (req, res) => {
   return res.sendStatus(403);
 });
 
-// Extract user-visible text from incoming message (supports text and interactive replies)
+// Helper: extract user-visible text from a message (supports text and interactive replies)
 function getIncomingText(message) {
   const t = message?.text?.body;
   if (typeof t === "string" && t.length > 0) return t;
@@ -42,50 +44,8 @@ function getIncomingText(message) {
   return "";
 }
 
-// Low-level senders
-async function sendWhatsApp(payload) {
-  if (!ACCESS_TOKEN || !PHONE_NUMBER_ID) {
-    console.error("Missing ACCESS_TOKEN or PHONE_NUMBER_ID");
-    return;
-  }
-  const url = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${ACCESS_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({}));
-    console.error("Send error:", data);
-  }
-}
-
-async function sendText(to, body) {
-  return sendWhatsApp({
-    messaging_product: "whatsapp",
-    to,
-    text: { body },
-  });
-}
-
-async function sendButtons(to, headerText, bodyText, buttons) {
-  return sendWhatsApp({
-    messaging_product: "whatsapp",
-    to,
-    interactive: {
-      type: "button",
-      header: { type: "text", text: headerText },
-      body: { text: bodyText },
-      action: { buttons },
-    },
-  });
-}
-
 // ===== Doctor advice menu and helpers =====
-const MENU_TEXT = [
+const MENU = [
   "1) 🤒 Fever / 🤕 Headache / 💪 Body or limb pain",
   "2) 🚽 Diarrhoea",
   "3) 🔥 Acidity / Heartburn / Gastritis",
@@ -101,28 +61,25 @@ const MENU_TEXT = [
   "13) 🤕 Stomach ache",
 ].join("\n");
 
-function buildAdvice(key) {
+function buildAdviceResponse(key) {
   const advice = {
-    1: { title: "🤒 Fever / 🤕 Headache / 💪 Body ache", meds: ["Tab. Dolo 650 — up to 2 times/day (1-0-1)"], extra: "Hydrate, rest, monitor temperature. If >102°F or persists, consult a doctor." },
-    2: { title: "🚽 Diarrhoea", meds: ["Tab. Sporolac-DS — up to 3 days, 3 times/day (1-1-1)"], extra: "Oral rehydration; avoid oily/spicy foods." },
-    3: { title: "🔥 Acidity / Heartburn / Gastritis", meds: ["Tab. Nexpro-RD / Nexpro-Fast / Gastrorest / Pan-D / Rantac", "Liq. Ulgel"], extra: "Up to 2×/day as needed. Avoid late heavy meals, caffeine, alcohol." },
-    4: { title: "🤧 Allergy / Body itching / Cold", meds: ["Tab. L-Dio-1 — once daily, up to 5 days (0-0-1)"], extra: "If drowsy, take at night. Avoid known allergens." },
-    5: { title: "🤢 Vomiting / Nausea", meds: ["Tab. Ondem MD S/L — up to 5 days, twice/day (1-0-1)"], extra: "Small sips of fluids. Seek care if persistent or dehydrated." },
-    6: { title: "🤧 Cold / Running nose", meds: ["Tab. Diominic-DCA / Tab. Allegra 120 mg — up to 5 days, twice/day (1-0-1)"], extra: "Steam inhalation can help." },
-    7: { title: "😷 Cough", meds: ["Syrup Corex DX / Liq. Phenergan — 1 tsp, three times/day (1-1-1 TSF)"], extra: "Warm fluids, avoid cold air. If >1 week or breathlessness, consult a doctor." },
-    8: { title: "🩸 Bleeding / Spotting P/V", meds: ["Tab. Tranexa 500 — for 5 days, twice/day (1-0-1)"], extra: "If heavy bleeding or pain, seek urgent care." },
-    9: { title: "🔙 Back pain / 🧠 Muscular pain", meds: ["Dynapar AQ spray for local application", "Tab. Dolo 650 — up to 2 times/day, as needed"], extra: "Gentle stretching and heat as needed." },
-    10:{ title: "🚫 Constipation", meds: ["Liq. Cremaffin — bedtime dose (per label); example 0-0-4 TSF"], extra: "Hydrate well; add fiber." },
+    1: { title: "🤒 Fever / 🤕 Headache / 💪 Body ache", meds: ["Tab. Dolo 650 — up to 2 times/day, as needed (1-0-1)"], extra: "🥤 Hydrate, 🛌 rest, and monitor temperature. If >102°F or persists, consult a doctor." },
+    2: { title: "🚽 Diarrhoea", meds: ["Tab. Sporolac-DS — up to 3 days, 3 times/day (1-1-1)"], extra: "🧃 Oral rehydration; avoid oily/spicy foods." },
+    3: { title: "🔥 Acidity / Heartburn / Gastritis", meds: ["Tab. Nexpro-RD / Nexpro-Fast / Gastrorest / Pan-D / Rantac", "Liq. Ulgel"], extra: "Up to 2×/day as needed. 🍽️ Avoid late heavy meals, caffeine, alcohol." },
+    4: { title: "🤧 Allergy / Body itching / Cold", meds: ["Tab. L-Dio-1 — once daily, up to 5 days (0-0-1)"], extra: "🌙 If drowsy, take at night. Avoid known allergens." },
+    5: { title: "🤢 Vomiting / Nausea", meds: ["Tab. Ondem MD S/L — up to 5 days, twice/day (1-0-1)"], extra: "🥤 Small sips of fluids. Seek care if persistent or dehydrated." },
+    6: { title: "🤧 Cold / Running nose", meds: ["Tab. Diominic-DCA / Tab. Allegra 120 mg — up to 5 days, twice/day (1-0-1)"], extra: "🌫️ Steam inhalation can help." },
+    7: { title: "😷 Cough", meds: ["Syrup Corex DX / Liq. Phenergan — 1 tsp, three times/day (1-1-1 TSF)"], extra: "☕ Warm fluids, avoid cold air. If >1 week or breathlessness, consult a doctor." },
+    8: { title: "🩸 Bleeding / Spotting P/V", meds: ["Tab. Tranexa 500 — for 5 days, twice/day (1-0-1)"], extra: "⚠️ If heavy bleeding or pain, seek urgent care." },
+    9: { title: "🔙 Back pain / 🧠 Muscular pain", meds: ["Dynapar AQ spray for local application", "Tab. Dolo 650 — up to 2 times/day, as needed"], extra: "🧘 Gentle stretching and heat as needed." },
+    10:{ title: "🚫 Constipation", meds: ["Liq. Cremaffin — bedtime dose (per label); example 0-0-4 TSF"], extra: "🥤 Hydrate well, add fiber." },
     11:{ title: "🥴 Weakness / Dizziness", meds: ["N-Spark sachet / Vital-Z powder / Oras-L drink"], extra: "4-4 TSF per instructions; drink 3–4 L water/day unless restricted." },
     12:{ title: "💊 Vaginal insertion (weekly)", meds: ["Tablet VH-3 — vaginal, weekly (0-0-1)"], extra: "Use as directed; if irritation occurs, consult a doctor." },
     13:{ title: "🤕 Stomach ache", meds: ["Tablet Cyclopam — three times/day (1-1-1)"], extra: "If severe or persistent with fever/vomiting, consult a doctor." },
   }[key];
   if (!advice) return null;
   const meds = advice.meds.map(m => `• ${m}`).join("\n");
-  return {
-    header: `🩺 ${advice.title}`,
-    body: `${meds}\n\nℹ️ ${advice.extra}`,
-  };
+  return `🩺 ${advice.title}\n${meds}\n\nℹ️ ${advice.extra}\n\n🔁 Reply 'menu' to see options again.\n🙏 Reply 'thanks' to end.`;
 }
 
 function parseCategory(text) {
@@ -155,9 +112,10 @@ function parseCategory(text) {
 
 function buildMenuGreeting(name) {
   return (
-    `👋 Hello${name ? ` ${name}` : ""}! I’m your doctor bot.\n` +
+    `👋 Hello${name ? ` ${name}` : ""}! I'm your doctor bot.\n` +
     `Please reply with a number (1–13) or a keyword like 'fever', 'cough'.\n\n` +
-    `📋 Menu:\n${MENU_TEXT}\n\n💡 Tip: Send 'menu' anytime to see options again.`
+    `📋 Menu:\n` + MENU +
+    `\n\n💡 Tip: Send 'menu' anytime to see options again.`
   );
 }
 
@@ -169,84 +127,116 @@ function buildAdviceButtons(catId) {
   ];
 }
 
+// Build header/body parts for interactive message from existing advice text
+function buildAdviceParts(catId) {
+  const full = buildAdviceResponse(catId);
+  if (!full) return null;
+  const [firstLine, ...rest] = full.split("\n");
+  const header = firstLine.replace(/^🩺\s*/, "");
+  const body = rest.join("\n").trim();
+  return { header, body };
+}
+
 // Webhook Receiver (POST)
 app.post("/webhook", async (req, res) => {
   try {
+    console.log("[POST /webhook] incoming:", JSON.stringify(req.body));
+
     const entry = req.body?.entry?.[0];
     const change = entry?.changes?.[0];
     const value = change?.value;
     const message = value?.messages?.[0];
 
-    if (!message) return res.sendStatus(200);
+    if (!message) {
+      // WhatsApp sends many event types (statuses, template updates, etc.)
+      return res.sendStatus(200);
+    }
 
     const from = message.from;
-    const textIn = getIncomingText(message) || "";
-    const lower = textIn.toLowerCase().trim();
+    const text = getIncomingText(message) || "";
+    const lower = text.toLowerCase().trim();
 
-    // Handle button replies by id (ack/back)
-    const buttonId =
-      message?.interactive?.button_reply?.id ||
-      message?.interactive?.list_reply?.id ||
-      null;
-
+    // Handle interactive button/list replies first
+    const buttonId = message?.interactive?.button_reply?.id || message?.interactive?.list_reply?.id || null;
     if (buttonId) {
       if (buttonId === "back_menu") {
         const name = value?.contacts?.[0]?.profile?.name;
-        await sendText(from, buildMenuGreeting(name));
+        await sendButtons(
+          from,
+          `👋 Hello${name ? ` ${name}` : ""}!`,
+          "Please choose an option or reply with a number/keyword.",
+          [
+            { type: "reply", reply: { id: "symptoms_menu", title: "🩺 Symptoms & Advice" } },
+            { type: "reply", reply: { id: "hospital_services", title: "🏥 Hospital Services" } },
+            { type: "reply", reply: { id: "general_medication", title: "💊 General Medication" } },
+          ]
+        );
         return res.sendStatus(200);
       }
       if (buttonId.startsWith("ack_")) {
         await sendText(from, "Thank you. Wishing you a speedy recovery. Reply 'menu' to see options again.");
         return res.sendStatus(200);
       }
-      // If a button id matches a category number, show advice again with buttons
+      // If button id is a category number 1–13, show advice again with buttons
       const catNum = parseInt(buttonId, 10);
       if (!Number.isNaN(catNum) && catNum >= 1 && catNum <= 13) {
-        const advice = buildAdvice(catNum);
-        if (advice) {
-          await sendButtons(from, advice.header, advice.body, buildAdviceButtons(catNum));
+        const parts = buildAdviceParts(catNum);
+        if (parts) {
+          await sendButtons(from, parts.header, parts.body, buildAdviceButtons(catNum));
         }
         return res.sendStatus(200);
       }
     }
 
-    // Fallbacks remain in plain text as requested
-    if (!lower || ["hi", "hello", "hey", "start", "help", "menu"].includes(lower)) {
+    // Doctor advice flow
+    let reply;
+    if (!text || ["hi", "hello", "hey", "menu", "help", "start", "hi!", "hello!"].includes(lower)) {
       const name = value?.contacts?.[0]?.profile?.name;
-      await sendText(from, buildMenuGreeting(name));
-      return res.sendStatus(200);
-    }
-    if (["thanks", "thank you", "ok", "okay"].includes(lower)) {
-      await sendText(from, "You’re welcome. Reply 'menu' to see options again.");
-      return res.sendStatus(200);
-    }
-    if (["emergency", "urgent", "help!"].includes(lower)) {
-      await sendText(from, "🚑 If this is an emergency (severe bleeding, chest pain, trouble breathing), please seek immediate medical care or call your local emergency number.");
-      return res.sendStatus(200);
+      reply = buildMenuGreeting(name);
+    } else if (["thanks", "thank you", "ok", "okay"].includes(lower)) {
+      reply = "😊 You’re welcome! Stay healthy. Send 'menu' anytime if you need more help.";
+    } else if (["emergency", "urgent", "help!"].includes(lower)) {
+      reply = "🚑 If this is an emergency (severe bleeding, chest pain, trouble breathing), please seek immediate medical care or call your local emergency number.";
+    } else {
+      const cat = parseCategory(text);
+      const parts = cat ? buildAdviceParts(cat) : null;
+      if (parts) {
+        // Send interactive buttons for the selected category and exit
+        await sendButtons(from, parts.header, parts.body, buildAdviceButtons(cat));
+        return res.sendStatus(200);
+      }
+      reply = "🤔 I didn’t catch that. Please reply with a number 1–13 or type 'menu' to see options.";
     }
 
-    // Category detection (number or keyword)
-    const cat = parseCategory(lower);
-    if (cat) {
-      const advice = buildAdvice(cat);
-      if (advice) {
-        // IMPORTANT PART YOU ASKED TO SEE:
-        // REPLACED plain text send (text: { body: reply }) WITH interactive buttons payload
-        // Previously (plain text):
-        // await sendText(from, `${advice.header}\n${advice.body}\n\nReply 'menu' to see options again.`);
-        // Now (interactive buttons):
-        await sendButtons(from, advice.header, advice.body, buildAdviceButtons(cat));
-        return res.sendStatus(200);
+    // Send reply via WhatsApp Cloud API (only if we didn't already send interactive)
+    if (reply && (!ACCESS_TOKEN || !PHONE_NUMBER_ID)) {
+      console.error("Missing ACCESS_TOKEN or PHONE_NUMBER_ID");
+    }
+    if (reply && ACCESS_TOKEN && PHONE_NUMBER_ID) {
+      const url = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
+      const payload = {
+        messaging_product: "whatsapp",
+        to: from,
+        text: { body: reply },
+      };
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        console.error("Send error:", data);
       }
     }
 
-    // If not understood, gently guide back
-    await sendText(from, "I didn’t catch that. Please reply with a number 1–13 or type 'menu' to see options.");
-    return res.sendStatus(200);
+    res.sendStatus(200);
   } catch (err) {
     console.error("Error handling webhook:", err?.response?.data || err.message || err);
-    // Still 200 to avoid webhook retries storm while debugging
-    return res.sendStatus(200);
+    res.sendStatus(200); // always 200 to avoid webhook retries storm while you debug
   }
 });
 
