@@ -119,6 +119,18 @@ function buildMenuGreeting(name) {
   );
 }
 
+// Generic builder for interactive button prompts
+function buildButtonsPrompt(header, body, options) {
+  return {
+    header,
+    body,
+    buttons: options.map((opt, i) => ({
+      type: "reply",
+      reply: { id: opt.id || `btn_${i + 1}`, title: opt.title },
+    })),
+  };
+}
+
 // Build standard buttons for advice categories (acknowledge/back)
 function buildAdviceButtons(catId) {
   return [
@@ -161,15 +173,16 @@ app.post("/webhook", async (req, res) => {
     if (buttonId) {
       if (buttonId === "back_menu") {
         const name = value?.contacts?.[0]?.profile?.name;
-        await sendButtons(
-          from,
-          `👋 Hello${name ? ` ${name}` : ""}!`,
-          "Please choose an option:",
+        const menu = buildButtonsPrompt(
+          "👋 Welcome to City Hospital",
+          "Please choose one of the options below:",
           [
-            { type: "reply", reply: { id: "hospital_services", title: "🏥 Hospital Services" } },
-            { type: "reply", reply: { id: "general_medication", title: "💊 General Medication" } },
+            { id: "hospital_services", title: "🏥 Hospital Services" },
+            { id: "general_medication", title: "💊 General Medication" },
+            { id: "doctor_advice", title: "🩺 Doctor’s Advice" },
           ]
         );
+        await sendButtons(from, menu.header, menu.body, menu.buttons);
         return res.sendStatus(200);
       }
       if (buttonId === "hospital_services") {
@@ -177,13 +190,13 @@ app.post("/webhook", async (req, res) => {
           title: "Medical Services",
           rows: [
             { id: "svc_emergency", title: "🚨 Emergency Care", description: "24/7 emergency medical services" },
-            { id: "svc_cardiology", title: "❤️ Cardiology", description: "Heart and cardiovascular care" },
+            { id: "svc_cardiology", title: "❤ Cardiology", description: "Heart and cardiovascular care" },
             { id: "svc_pediatrics", title: "👶 Pediatrics", description: "Medical care for children" },
             { id: "svc_orthopedics", title: "🦴 Orthopedics", description: "Bone and joint treatment" },
             { id: "svc_dermatology", title: "🧴 Dermatology", description: "Skin and hair care" },
             { id: "svc_gynecology", title: "👩 Gynecology", description: "Women's health services" },
             { id: "svc_neurology", title: "🧠 Neurology", description: "Brain and nervous system care" },
-            { id: "svc_oncology", title: "🎗️ Oncology", description: "Cancer treatment and care" }
+            { id: "svc_oncology", title: "🎗 Oncology", description: "Cancer treatment and care" }
           ]
         }];
         await sendList(from, "🏥 Hospital Services", "Please select a medical service for details:", "View Services", sections);
@@ -217,8 +230,17 @@ app.post("/webhook", async (req, res) => {
     // Doctor advice flow
     let reply;
     if (!text || ["hi", "hello", "hey", "menu", "help", "start", "hi!", "hello!"].includes(lower)) {
-      const name = value?.contacts?.[0]?.profile?.name;
-      reply = buildMenuGreeting(name);
+      const menu = buildButtonsPrompt(
+        "👋 Welcome to City Hospital",
+        "Please choose one of the options below:",
+        [
+          { id: "hospital_services", title: "🏥 Hospital Services" },
+          { id: "general_medication", title: "💊 General Medication" },
+          { id: "doctor_advice", title: "🩺 Doctor’s Advice" },
+        ]
+      );
+      await sendButtons(from, menu.header, menu.body, menu.buttons);
+      return res.sendStatus(200);
     } else if (["thanks", "thank you", "ok", "okay"].includes(lower)) {
       reply = "😊 You’re welcome! Stay healthy. Send 'menu' anytime if you need more help.";
     } else if (["emergency", "urgent", "help!"].includes(lower)) {
