@@ -126,7 +126,6 @@ function buildMainMenuText() {
     "Please choose by sending a number:\n\n" +
     "10) 🏥 Hospital Services\n" +
     "20) 💊 General Medication\n" +
-    "30) 🩺 Doctor’s Advice (Symptoms)\n\n" +
     "Tip: Send 'menu' anytime to see this again."
   );
 }
@@ -150,11 +149,8 @@ function buildHospitalServicesText() {
 function buildMedicationMenuText() {
   return (
     "💊 General Medication\n" +
-    "Please reply with a number:\n\n" +
-    "21) Paracetamol\n" +
-    "22) Ibuprofen\n" +
-    "23) Antibiotics\n" +
-    "24) Antacids\n\n" +
+    "Please choose 1–13 from the list:\n\n" +
+    MENU + "\n\n" +
     "Send 'menu' to go back."
   );
 }
