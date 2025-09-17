@@ -63,17 +63,17 @@ const MENU = [
 
 function buildAdviceResponse(key) {
   const advice = {
-    1: { title: "🤒 Fever / 🤕 Headache / 💪 Body ache", meds: ["Tab. Dolo 650 — up to 2 times/day, as needed (1-0-1)"], extra: "🥤 Hydrate, 🛌 rest, and monitor temperature. If >102°F or persists, consult a doctor." },
+    1: { title: "🤒 Fever ", meds: ["Tab. Dolo 650 — up to 2 times/day, as needed (1-0-1)"], extra: "🥤 Hydrate, 🛌 rest, and monitor temperature. If >102°F or persists, consult a doctor." },
     2: { title: "🚽 Diarrhoea", meds: ["Tab. Sporolac-DS — up to 3 days, 3 times/day (1-1-1)"], extra: "🧃 Oral rehydration; avoid oily/spicy foods." },
-    3: { title: "🔥 Acidity / Heartburn / Gastritis", meds: ["Tab. Nexpro-RD / Nexpro-Fast / Gastrorest / Pan-D / Rantac", "Liq. Ulgel"], extra: "Up to 2×/day as needed. 🍽️ Avoid late heavy meals, caffeine, alcohol." },
-    4: { title: "🤧 Allergy / Body itching / Cold", meds: ["Tab. L-Dio-1 — once daily, up to 5 days (0-0-1)"], extra: "🌙 If drowsy, take at night. Avoid known allergens." },
-    5: { title: "🤢 Vomiting / Nausea", meds: ["Tab. Ondem MD S/L — up to 5 days, twice/day (1-0-1)"], extra: "🥤 Small sips of fluids. Seek care if persistent or dehydrated." },
-    6: { title: "🤧 Cold / Running nose", meds: ["Tab. Diominic-DCA / Tab. Allegra 120 mg — up to 5 days, twice/day (1-0-1)"], extra: "🌫️ Steam inhalation can help." },
+    3: { title: "🔥 Acidity", meds: ["Tab. Nexpro-RD / Nexpro-Fast / Gastrorest / Pan-D / Rantac", "Liq. Ulgel"], extra: "Up to 2×/day as needed. 🍽️ Avoid late heavy meals, caffeine, alcohol." },
+    4: { title: "🤧 Allergy", meds: ["Tab. L-Dio-1 — once daily, up to 5 days (0-0-1)"], extra: "🌙 If drowsy, take at night. Avoid known allergens." },
+    5: { title: "🤢 Vomiting", meds: ["Tab. Ondem MD S/L — up to 5 days, twice/day (1-0-1)"], extra: "🥤 Small sips of fluids. Seek care if persistent or dehydrated." },
+    6: { title: "🤧 Cold ", meds: ["Tab. Diominic-DCA / Tab. Allegra 120 mg — up to 5 days, twice/day (1-0-1)"], extra: "🌫️ Steam inhalation can help." },
     7: { title: "😷 Cough", meds: ["Syrup Corex DX / Liq. Phenergan — 1 tsp, three times/day (1-1-1 TSF)"], extra: "☕ Warm fluids, avoid cold air. If >1 week or breathlessness, consult a doctor." },
     8: { title: "🩸 Bleeding / Spotting P/V", meds: ["Tab. Tranexa 500 — for 5 days, twice/day (1-0-1)"], extra: "⚠️ If heavy bleeding or pain, seek urgent care." },
-    9: { title: "🔙 Back pain / 🧠 Muscular pain", meds: ["Dynapar AQ spray for local application", "Tab. Dolo 650 — up to 2 times/day, as needed"], extra: "🧘 Gentle stretching and heat as needed." },
+    9: { title: "🔙 Back pain", meds: ["Dynapar AQ spray for local application", "Tab. Dolo 650 — up to 2 times/day, as needed"], extra: "🧘 Gentle stretching and heat as needed." },
     10:{ title: "🚫 Constipation", meds: ["Liq. Cremaffin — bedtime dose (per label); example 0-0-4 TSF"], extra: "🥤 Hydrate well, add fiber." },
-    11:{ title: "🥴 Weakness / Dizziness", meds: ["N-Spark sachet / Vital-Z powder / Oras-L drink"], extra: "4-4 TSF per instructions; drink 3–4 L water/day unless restricted." },
+    11:{ title: "🥴 Weakness", meds: ["N-Spark sachet / Vital-Z powder / Oras-L drink"], extra: "4-4 TSF per instructions; drink 3–4 L water/day unless restricted." },
     12:{ title: "💊 Vaginal insertion (weekly)", meds: ["Tablet VH-3 — vaginal, weekly (0-0-1)"], extra: "Use as directed; if irritation occurs, consult a doctor." },
     13:{ title: "🤕 Stomach ache", meds: ["Tablet Cyclopam — three times/day (1-1-1)"], extra: "If severe or persistent with fever/vomiting, consult a doctor." },
   }[key];
@@ -441,3 +441,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
