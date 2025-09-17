@@ -268,14 +268,22 @@ app.post("/webhook", async (req, res) => {
         // Handle selections from Hospital Services list
         if (buttonId.startsWith("svc_")) {
           const svc = {
-            svc_emergency: "🚨 Emergency Care — 24/7 emergency medical services.",
-            svc_cardiology: "❤ Cardiology — Heart and cardiovascular care.",
-            svc_pediatrics: "👶 Pediatrics — Medical care for children.",
-            svc_orthopedics: "🦴 Orthopedics — Bone and joint treatment.",
-            svc_dermatology: "🧴 Dermatology — Skin and hair care.",
-            svc_gynecology: "👩 Gynecology — Women's health services.",
-            svc_neurology: "🧠 Neurology — Brain and nervous system care.",
-            svc_oncology: "🎗 Oncology — Cancer treatment and care."
+            svc_emergency:
+              "🚨 Emergency Care\nOur ER is open 24/7 for urgent conditions like chest pain, severe bleeding, accidents, and breathing difficulties.\nServices: Triage, stabilization, trauma care, cardiac emergencies.\nTeam: Emergency physicians, nurses, on-call specialists.\nIf you’re experiencing a life‑threatening emergency, please proceed to the ER immediately.",
+            svc_cardiology:
+              "❤ Cardiology\nComprehensive heart care for hypertension, chest pain, arrhythmias, and heart failure.\nServices: ECG, echocardiography, TMT, Holter, angiography (via network), medication management.\nWhen to visit: Persistent chest pain, palpitations, breathlessness, high BP.",
+            svc_pediatrics:
+              "👶 Pediatrics\nHealthcare for infants, children, and adolescents.\nServices: Vaccinations, growth & nutrition, common infections, asthma, allergy care.\nWhen to visit: Fever, poor feeding, cough/wheeze, rashes, routine immunizations.",
+            svc_orthopedics:
+              "🦴 Orthopedics\nBone, joint, and muscle care for injuries and chronic pain.\nServices: Fracture care, sprain/strain management, arthritis care, back/neck pain evaluation, physiotherapy guidance.\nWhen to visit: Joint pain, sports injuries, back pain, limited movement.",
+            svc_dermatology:
+              "🧴 Dermatology\nSkin, hair, and nail treatments.\nServices: Acne, eczema, psoriasis, hair fall, dandruff, fungal & bacterial infections, pigmentation issues, minor procedures.\nWhen to visit: Persistent rashes, itching, hair loss, acne flare‑ups.",
+            svc_gynecology:
+              "👩 Gynecology\nWomen’s health services including menstrual, fertility, and menopausal care.\nServices: Irregular periods, PCOS, infections, contraception advice, antenatal checkups (with OB).\nWhen to visit: Pelvic pain, abnormal bleeding, discharge, pregnancy care.",
+            svc_neurology:
+              "🧠 Neurology\nDiagnosis and management of brain, spine, and nerve disorders.\nServices: Headache/migraine clinic, seizure/epilepsy care, neuropathy, movement disorders, stroke rehab guidance.\nWhen to visit: Frequent severe headaches, seizures, weakness/numbness, imbalance.",
+            svc_oncology:
+              "🎗 Oncology\nCancer screening, diagnosis coordination, and treatment planning with our specialist network.\nServices: Screening (breast/cervix/oral), chemotherapy coordination, pain & symptom care, counseling.\nWhen to visit: Suspicious lumps, unexplained weight loss, prolonged cough/bleeding."
           }[buttonId];
           if (svc) {
             await sendText(from, `🏥 Service Info\n${svc}\n\nSend 'menu' to go back.`);
