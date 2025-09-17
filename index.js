@@ -119,16 +119,44 @@ function buildMenuGreeting(name) {
   );
 }
 
-// Generic builder for interactive button prompts
-function buildButtonsPrompt(header, body, options) {
-  return {
-    header,
-    body,
-    buttons: options.map((opt, i) => ({
-      type: "reply",
-      reply: { id: opt.id || `btn_${i + 1}`, title: opt.title },
-    })),
-  };
+// Text-only menus (no buttons)
+function buildMainMenuText() {
+  return (
+    "👋 Welcome to City Hospital\n" +
+    "Please choose by sending a number:\n\n" +
+    "10) 🏥 Hospital Services\n" +
+    "20) 💊 General Medication\n" +
+    "30) 🩺 Doctor’s Advice (Symptoms)\n\n" +
+    "Tip: Send 'menu' anytime to see this again."
+  );
+}
+
+function buildHospitalServicesText() {
+  return (
+    "🏥 Hospital Services\n" +
+    "Please reply with a number:\n\n" +
+    "11) 🚨 Emergency Care — 24/7 emergency medical services\n" +
+    "12) ❤ Cardiology — Heart and cardiovascular care\n" +
+    "13) 👶 Pediatrics — Medical care for children\n" +
+    "14) 🦴 Orthopedics — Bone and joint treatment\n" +
+    "15) 🧴 Dermatology — Skin and hair care\n" +
+    "16) 👩 Gynecology — Women's health services\n" +
+    "17) 🧠 Neurology — Brain and nervous system care\n" +
+    "18) 🎗 Oncology — Cancer treatment and care\n\n" +
+    "Send 'menu' to go back."
+  );
+}
+
+function buildMedicationMenuText() {
+  return (
+    "💊 General Medication\n" +
+    "Please reply with a number:\n\n" +
+    "21) Paracetamol\n" +
+    "22) Ibuprofen\n" +
+    "23) Antibiotics\n" +
+    "24) Antacids\n\n" +
+    "Send 'menu' to go back."
+  );
 }
 
 // Build standard buttons for advice categories (acknowledge/back)
@@ -178,6 +206,7 @@ async function sendButtons(to, headerText, bodyText, buttons) {
   return sendWhatsApp({
     messaging_product: "whatsapp",
     to,
+    type: "interactive",
     interactive: {
       type: "button",
       header: { type: "text", text: headerText },
@@ -191,6 +220,7 @@ async function sendList(to, headerText, bodyText, buttonText, sections) {
   return sendWhatsApp({
     messaging_product: "whatsapp",
     to,
+    type: "interactive",
     interactive: {
       type: "list",
       header: { type: "text", text: headerText },
@@ -219,92 +249,76 @@ app.post("/webhook", async (req, res) => {
     const text = getIncomingText(message) || "";
     const lower = text.toLowerCase().trim();
 
-    // Handle interactive button/list replies first
-    const buttonId = message?.interactive?.button_reply?.id || message?.interactive?.list_reply?.id || null;
-    if (buttonId) {
-      if (buttonId === "back_menu") {
-        const name = value?.contacts?.[0]?.profile?.name;
-        const menu = buildButtonsPrompt(
-          "👋 Welcome to City Hospital",
-          "Please choose one of the options below:",
-          [
-            { id: "hospital_services", title: "🏥 Hospital Services" },
-            { id: "general_medication", title: "💊 General Medication" },
-            { id: "doctor_advice", title: "🩺 Doctor’s Advice" },
-          ]
-        );
-        await sendButtons(from, menu.header, menu.body, menu.buttons);
-        return res.sendStatus(200);
-      }
-      if (buttonId === "hospital_services") {
-        const sections = [{
-          title: "Medical Services",
-          rows: [
-            { id: "svc_emergency", title: "🚨 Emergency Care", description: "24/7 emergency medical services" },
-            { id: "svc_cardiology", title: "❤ Cardiology", description: "Heart and cardiovascular care" },
-            { id: "svc_pediatrics", title: "👶 Pediatrics", description: "Medical care for children" },
-            { id: "svc_orthopedics", title: "🦴 Orthopedics", description: "Bone and joint treatment" },
-            { id: "svc_dermatology", title: "🧴 Dermatology", description: "Skin and hair care" },
-            { id: "svc_gynecology", title: "👩 Gynecology", description: "Women's health services" },
-            { id: "svc_neurology", title: "🧠 Neurology", description: "Brain and nervous system care" },
-            { id: "svc_oncology", title: "🎗 Oncology", description: "Cancer treatment and care" }
-          ]
-        }];
-        await sendList(from, "🏥 Hospital Services", "Please select a medical service for details:", "View Services", sections);
-        return res.sendStatus(200);
-      }
-      if (buttonId === "general_medication") {
-        const buttons = [
-          { type: "reply", reply: { id: "paracetamol", title: "💊 Paracetamol" } },
-          { type: "reply", reply: { id: "ibuprofen", title: "💊 Ibuprofen" } },
-          { type: "reply", reply: { id: "antibiotics", title: "💊 Antibiotics" } },
-          { type: "reply", reply: { id: "antacids", title: "💊 Antacids" } },
-        ];
-        await sendButtons(from, "💊 General Medication", "Please select a medication for detailed information:", buttons);
-        return res.sendStatus(200);
-      }
-      if (buttonId.startsWith("ack_")) {
-        await sendText(from, "Thank you. Wishing you a speedy recovery. Reply 'menu' to see options again.");
-        return res.sendStatus(200);
-      }
-      // If button id is a category number 1–13, show advice again with buttons
-      const catNum = parseInt(buttonId, 10);
-      if (!Number.isNaN(catNum) && catNum >= 1 && catNum <= 13) {
-        const parts = buildAdviceParts(catNum);
-        if (parts) {
-          await sendButtons(from, parts.header, parts.body, buildAdviceButtons(catNum));
-        }
-        return res.sendStatus(200);
-      }
-    }
+    // No interactive buttons/lists usage — number-only flow
 
     // Doctor advice flow
     let reply;
     if (!text || ["hi", "hello", "hey", "menu", "help", "start", "hi!", "hello!"].includes(lower)) {
-      const menu = buildButtonsPrompt(
-        "👋 Welcome to City Hospital",
-        "Please choose one of the options below:",
-        [
-          { id: "hospital_services", title: "🏥 Hospital Services" },
-          { id: "general_medication", title: "💊 General Medication" },
-          { id: "doctor_advice", title: "🩺 Doctor’s Advice" },
-        ]
-      );
-      await sendButtons(from, menu.header, menu.body, menu.buttons);
+      await sendText(from, buildMainMenuText());
       return res.sendStatus(200);
     } else if (["thanks", "thank you", "ok", "okay"].includes(lower)) {
       reply = "😊 You’re welcome! Stay healthy. Send 'menu' anytime if you need more help.";
     } else if (["emergency", "urgent", "help!"].includes(lower)) {
       reply = "🚑 If this is an emergency (severe bleeding, chest pain, trouble breathing), please seek immediate medical care or call your local emergency number.";
     } else {
-      const cat = parseCategory(text);
-      const parts = cat ? buildAdviceParts(cat) : null;
-      if (parts) {
-        // Send interactive buttons for the selected category and exit
-        await sendButtons(from, parts.header, parts.body, buildAdviceButtons(cat));
-        return res.sendStatus(200);
+      // Number-only dispatcher
+      const num = parseInt(lower, 10);
+      if (!Number.isNaN(num)) {
+        // Main menu selections
+        if (num === 10) {
+          await sendText(from, buildHospitalServicesText());
+          return res.sendStatus(200);
+        }
+        if (num === 20) {
+          await sendText(from, buildMedicationMenuText());
+          return res.sendStatus(200);
+        }
+        if (num === 30) {
+          await sendText(from, `🩺 Doctor’s Advice (Symptoms)\nPlease choose 1–13 from the list:\n\n${MENU}\n\nSend 'menu' to go back.`);
+          return res.sendStatus(200);
+        }
+        // Hospital services details
+        const services = {
+          11: "🚨 Emergency Care — 24/7 emergency medical services.",
+          12: "❤ Cardiology — Heart and cardiovascular care.",
+          13: "👶 Pediatrics — Medical care for children.",
+          14: "🦴 Orthopedics — Bone and joint treatment.",
+          15: "🧴 Dermatology — Skin and hair care.",
+          16: "👩 Gynecology — Women's health services.",
+          17: "🧠 Neurology — Brain and nervous system care.",
+          18: "🎗 Oncology — Cancer treatment and care.",
+        };
+        if (services[num]) {
+          await sendText(from, `🏥 Service Info\n${services[num]}\n\nSend 'menu' to go back.`);
+          return res.sendStatus(200);
+        }
+        // Medication choices
+        if (num === 21) {
+          await sendText(from, "💊 PARACETAMOL (Acetaminophen)\nPurpose: Pain relief, fever reduction.\nDosage: Adults 500–1000 mg every 4–6h (max 4000 mg/day). Children 10–15 mg/kg.\nPrecautions: Avoid in liver disease; do not exceed max dose; avoid duplicates.");
+          return res.sendStatus(200);
+        }
+        if (num === 22) {
+          await sendText(from, "💊 IBUPROFEN\nPurpose: Anti-inflammatory, pain relief, fever reduction.\nDosage: Adults 200–400 mg every 4–6h (max 2400 mg/day); with food.\nPrecautions: Avoid ulcers/heart issues; avoid in late pregnancy; may irritate stomach.");
+          return res.sendStatus(200);
+        }
+        if (num === 23) {
+          await sendText(from, "💊 ANTIBIOTICS\nPurpose: Treat bacterial infections.\nImportant: Prescription required; complete full course; do not share.\nPrecautions: Not for viral infections; report allergies; follow doctor’s directions.");
+          return res.sendStatus(200);
+        }
+        if (num === 24) {
+          await sendText(from, "💊 ANTACIDS\nPurpose: Relief from heartburn/acid indigestion.\nDosage: Adults 1–2 tablets as needed (max per label).\nPrecautions: Limit to short-term use; avoid in kidney disease unless advised; may interact with meds.");
+          return res.sendStatus(200);
+        }
+        // Symptoms (1–13)
+        if (num >= 1 && num <= 13) {
+          const parts = buildAdviceParts(num);
+          if (parts) {
+            await sendText(from, `${parts.header}\n${parts.body}\n\nSend 'menu' to go back.`);
+            return res.sendStatus(200);
+          }
+        }
       }
-      reply = "🤔 I didn’t catch that. Please reply with a number 1–13 or type 'menu' to see options.";
+      reply = "🤔 I didn’t catch that. Send 10 for Hospital Services, 20 for General Medication, 30 for Doctor’s Advice, or a symptom number 1–13.";
     }
 
     // Send reply via WhatsApp Cloud API (only if we didn't already send interactive)
