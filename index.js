@@ -164,13 +164,39 @@ app.post("/webhook", async (req, res) => {
         await sendButtons(
           from,
           `👋 Hello${name ? ` ${name}` : ""}!`,
-          "Please choose an option or reply with a number/keyword.",
+          "Please choose an option:",
           [
-            { type: "reply", reply: { id: "symptoms_menu", title: "🩺 Symptoms & Advice" } },
             { type: "reply", reply: { id: "hospital_services", title: "🏥 Hospital Services" } },
             { type: "reply", reply: { id: "general_medication", title: "💊 General Medication" } },
           ]
         );
+        return res.sendStatus(200);
+      }
+      if (buttonId === "hospital_services") {
+        const sections = [{
+          title: "Medical Services",
+          rows: [
+            { id: "svc_emergency", title: "🚨 Emergency Care", description: "24/7 emergency medical services" },
+            { id: "svc_cardiology", title: "❤️ Cardiology", description: "Heart and cardiovascular care" },
+            { id: "svc_pediatrics", title: "👶 Pediatrics", description: "Medical care for children" },
+            { id: "svc_orthopedics", title: "🦴 Orthopedics", description: "Bone and joint treatment" },
+            { id: "svc_dermatology", title: "🧴 Dermatology", description: "Skin and hair care" },
+            { id: "svc_gynecology", title: "👩 Gynecology", description: "Women's health services" },
+            { id: "svc_neurology", title: "🧠 Neurology", description: "Brain and nervous system care" },
+            { id: "svc_oncology", title: "🎗️ Oncology", description: "Cancer treatment and care" }
+          ]
+        }];
+        await sendList(from, "🏥 Hospital Services", "Please select a medical service for details:", "View Services", sections);
+        return res.sendStatus(200);
+      }
+      if (buttonId === "general_medication") {
+        const buttons = [
+          { type: "reply", reply: { id: "paracetamol", title: "💊 Paracetamol" } },
+          { type: "reply", reply: { id: "ibuprofen", title: "💊 Ibuprofen" } },
+          { type: "reply", reply: { id: "antibiotics", title: "💊 Antibiotics" } },
+          { type: "reply", reply: { id: "antacids", title: "💊 Antacids" } },
+        ];
+        await sendButtons(from, "💊 General Medication", "Please select a medication for detailed information:", buttons);
         return res.sendStatus(200);
       }
       if (buttonId.startsWith("ack_")) {
