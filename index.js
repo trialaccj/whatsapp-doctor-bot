@@ -1,185 +1,125 @@
-// Webhook Receiver (POST)
-app.post("/webhook", async (req, res) => {
-  try {
-    console.log("[POST /webhook] incoming:", JSON.stringify(req.body));
+import express from "express";
+import bodyParser from "body-parser";
+import fetch from "node-fetch";
 
-    const entry = req.body?.entry?.[0];
-    const change = entry?.changes?.[0];
-    const value = change?.value;
-    const message = value?.messages?.[0];
+const app = express();
+app.use(bodyParser.json());
 
-    if (!message) {
-      // WhatsApp sends many event types (statuses, template updates, etc.)
-      return res.sendStatus(200);
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "your-verify-token";
+const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN; // Put your permanent token here
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID; // From Meta dashboard
+
+// ✅ Webhook verification (Meta will call this once)
+app.get("/webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  if (mode && token) {
+    if (mode === "subscribe" && token === VERIFY_TOKEN) {
+      console.log("Webhook verified ✅");
+      res.status(200).send(challenge);
+    } else {
+      res.sendStatus(403);
     }
+  }
+});
 
-    const from = message.from;
-    const text = getIncomingText(message) || "";
-    const lower = text.toLowerCase().trim();
+// ✅ Handle incoming messages
+app.post("/webhook", async (req, res) => {
+  console.log("Incoming webhook:", JSON.stringify(req.body, null, 2));
 
-    // Greetings / reset
-    if (!text || ["hi", "hello", "hey", "menu", "help", "start"].includes(lower)) {
-      // Show main menu as LIST
-      await sendList(
-        from,
-        "👋 Welcome to City Hospital",
-        "Please choose one of the following options:",
-        "View Options",
-        [
+  const entry = req.body.entry?.[0];
+  const changes = entry?.changes?.[0];
+  const messages = changes?.value?.messages;
+
+  if (messages && messages[0]) {
+    const from = messages[0].from; // sender’s number
+    const msgBody = messages[0].text?.body?.toLowerCase();
+
+    if (msgBody === "menu") {
+      await sendListMessage(from);
+    } else if (msgBody === "hello") {
+      await sendButtonMessage(from);
+    } else {
+      await sendTextMessage(from, "Type 'menu' for list or 'hello' for buttons 🙂");
+    }
+  }
+
+  res.sendStatus(200);
+});
+
+// ✅ Send plain text
+async function sendTextMessage(to, text) {
+  return await sendMessage({
+    messaging_product: "whatsapp",
+    to,
+    text: { body: text },
+  });
+}
+
+// ✅ Send interactive buttons
+async function sendButtonMessage(to) {
+  return await sendMessage({
+    messaging_product: "whatsapp",
+    to,
+    type: "interactive",
+    interactive: {
+      type: "button",
+      body: { text: "Choose an option:" },
+      action: {
+        buttons: [
+          { type: "reply", reply: { id: "yes_btn", title: "✅ Yes" } },
+          { type: "reply", reply: { id: "no_btn", title: "❌ No" } },
+        ],
+      },
+    },
+  });
+}
+
+// ✅ Send interactive list
+async function sendListMessage(to) {
+  return await sendMessage({
+    messaging_product: "whatsapp",
+    to,
+    type: "interactive",
+    interactive: {
+      type: "list",
+      body: { text: "Pick one from the list 👇" },
+      action: {
+        button: "Options",
+        sections: [
           {
             title: "Main Menu",
             rows: [
-              { id: "menu_10", title: "🏥 Hospital Services", description: "View hospital departments" },
-              { id: "menu_20", title: "💊 General Medication", description: "Common medicines & usage" },
-              { id: "menu_30", title: "🩺 Doctor’s Advice", description: "Get advice for symptoms" },
+              { id: "opt1", title: "Option 1", description: "First choice" },
+              { id: "opt2", title: "Option 2", description: "Second choice" },
             ],
           },
-        ]
-      );
-      return res.sendStatus(200);
-    }
+        ],
+      },
+    },
+  });
+}
 
-    // Thank you flow
-    if (["thanks", "thank you", "ok", "okay"].includes(lower)) {
-      await sendText(from, "😊 You’re welcome! Stay healthy. Send 'menu' anytime if you need more help.");
-      return res.sendStatus(200);
-    }
+// ✅ Common function to send API request
+async function sendMessage(payload) {
+  const url = `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`;
 
-    // Emergency
-    if (["emergency", "urgent", "help!"].includes(lower)) {
-      await sendText(from, "🚑 If this is an emergency (severe bleeding, chest pain, trouble breathing), please seek immediate medical care or call your local emergency number.");
-      return res.sendStatus(200);
-    }
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
 
-    // Number dispatcher
-    const num = parseInt(lower, 10);
-    if (!Number.isNaN(num)) {
-      // Hospital Services (10)
-      if (num === 10) {
-        await sendList(
-          from,
-          "🏥 Hospital Services",
-          "Please choose a department:",
-          "Select Service",
-          [
-            {
-              title: "Departments",
-              rows: [
-                { id: "srv_11", title: "🚨 Emergency Care" },
-                { id: "srv_12", title: "❤ Cardiology" },
-                { id: "srv_13", title: "👶 Pediatrics" },
-                { id: "srv_14", title: "🦴 Orthopedics" },
-                { id: "srv_15", title: "🧴 Dermatology" },
-                { id: "srv_16", title: "👩 Gynecology" },
-                { id: "srv_17", title: "🧠 Neurology" },
-                { id: "srv_18", title: "🎗 Oncology" },
-              ],
-            },
-          ]
-        );
-        return res.sendStatus(200);
-      }
+  const data = await res.json();
+  console.log("Message sent response:", JSON.stringify(data, null, 2));
+  return data;
+}
 
-      // General Medication (20)
-      if (num === 20) {
-        await sendList(
-          from,
-          "💊 General Medication",
-          "Select a common medicine to learn about it:",
-          "Select Medicine",
-          [
-            {
-              title: "Medicines",
-              rows: [
-                { id: "med_21", title: "Paracetamol" },
-                { id: "med_22", title: "Ibuprofen" },
-                { id: "med_23", title: "Antibiotics" },
-                { id: "med_24", title: "Antacids" },
-              ],
-            },
-          ]
-        );
-        return res.sendStatus(200);
-      }
-
-      // Doctor’s Advice (30)
-      if (num === 30) {
-        await sendList(
-          from,
-          "🩺 Doctor’s Advice",
-          "Select a symptom from the list (1–13):",
-          "Select Symptom",
-          [
-            {
-              title: "Symptoms",
-              rows: MENU.split("\n").map((line, idx) => ({
-                id: `sym_${idx + 1}`,
-                title: line,
-              })),
-            },
-          ]
-        );
-        return res.sendStatus(200);
-      }
-
-      // Hospital service details (11–18)
-      const services = {
-        11: "🚨 Emergency Care — 24/7 emergency medical services.",
-        12: "❤ Cardiology — Heart and cardiovascular care.",
-        13: "👶 Pediatrics — Medical care for children.",
-        14: "🦴 Orthopedics — Bone and joint treatment.",
-        15: "🧴 Dermatology — Skin and hair care.",
-        16: "👩 Gynecology — Women's health services.",
-        17: "🧠 Neurology — Brain and nervous system care.",
-        18: "🎗 Oncology — Cancer treatment and care.",
-      };
-      if (services[num]) {
-        await sendText(from, `🏥 Service Info\n${services[num]}\n\nSend 'menu' to go back.`);
-        return res.sendStatus(200);
-      }
-
-      // Medicines (21–24)
-      if (num === 21) {
-        await sendText(from, "💊 PARACETAMOL (Acetaminophen)\nPurpose: Pain relief, fever reduction.\nDosage: Adults 500–1000 mg every 4–6h (max 4000 mg/day). Children 10–15 mg/kg.\nPrecautions: Avoid in liver disease; do not exceed max dose.");
-        return res.sendStatus(200);
-      }
-      if (num === 22) {
-        await sendText(from, "💊 IBUPROFEN\nPurpose: Anti-inflammatory, pain relief, fever reduction.\nDosage: Adults 200–400 mg every 4–6h (max 2400 mg/day); with food.\nPrecautions: Avoid ulcers/heart issues; avoid late pregnancy; may irritate stomach.");
-        return res.sendStatus(200);
-      }
-      if (num === 23) {
-        await sendText(from, "💊 ANTIBIOTICS\nPurpose: Treat bacterial infections.\nImportant: Prescription required; complete full course.\nPrecautions: Not for viral infections; follow doctor’s directions.");
-        return res.sendStatus(200);
-      }
-      if (num === 24) {
-        await sendText(from, "💊 ANTACIDS\nPurpose: Relief from heartburn/acid indigestion.\nDosage: Adults 1–2 tablets as needed (max per label).\nPrecautions: Limit to short-term use; may interact with meds.");
-        return res.sendStatus(200);
-      }
-
-      // Symptoms (1–13) → send buttons
-      if (num >= 1 && num <= 13) {
-        const parts = buildAdviceParts(num);
-        if (parts) {
-          await sendButtons(
-            from,
-            parts.header,        // header
-            parts.body,          // body
-            buildAdviceButtons(num) // ✅ buttons
-          );
-          return res.sendStatus(200);
-        }
-      }
-    }
-
-    // Default fallback
-    await sendText(
-      from,
-      "🤔 I didn’t catch that.\nSend:\n10 for Hospital Services\n20 for General Medication\n30 for Doctor’s Advice\nOr a symptom number 1–13."
-    );
-
-    res.sendStatus(200);
-  } catch (err) {
-    console.error("Error handling webhook:", err?.response?.data || err.message || err);
-    res.sendStatus(200);
-  }
-});
+// ✅ Start server
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
