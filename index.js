@@ -267,7 +267,7 @@ app.post("/webhook", async (req, res) => {
       }
       if (buttonId === "general_medication") {
         const sections = [{
-          title: "Doctor’s Advice (Symptoms)",
+          title: "Symptoms 1–9",
           rows: [
             { id: "adv_1", title: "🤒 Fever / 🤕 Headache / 💪 Body or limb pain", description: "Tap to view advice" },
             { id: "adv_2", title: "🚽 Diarrhoea", description: "Tap to view advice" },
@@ -286,7 +286,7 @@ app.post("/webhook", async (req, res) => {
       }
       if (buttonId === "adv_more1") {
         const sections = [{
-          title: "More Symptoms",
+          title: "Symptoms 10–13",
           rows: [
             { id: "adv_10", title: "🚫 Constipation", description: "Tap to view advice" },
             { id: "adv_11", title: "🥴 Weakness / Dizziness", description: "Tap to view advice" },
@@ -300,7 +300,7 @@ app.post("/webhook", async (req, res) => {
       }
       if (buttonId === "adv_med_back") {
         const sections = [{
-          title: "Doctor’s Advice (Symptoms)",
+          title: "Symptoms 1–9",
           rows: [
             { id: "adv_1", title: "🤒 Fever / 🤕 Headache / 💪 Body or limb pain", description: "Tap to view advice" },
             { id: "adv_2", title: "🚽 Diarrhoea", description: "Tap to view advice" },
